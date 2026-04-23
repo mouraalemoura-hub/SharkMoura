@@ -1,33 +1,32 @@
-from pathlib import Path
+# Bloco para evitar erro de encoding no CI Windows (GitHub Actions)
+# Usa apenas ASCII e marcadores [OK], [WARN], [ERRO]
+
 import sys
+from pathlib import Path
 
-# Substitui a validação antiga da raiz do projeto.
-# Marcadores mínimos: 'scripts/' e '.github/'. 'app/' e 'tests/' são opcionais.
 
-script_dir = Path(__file__).resolve().parent
-project_root = script_dir.parent
+def print_status(status: str, message: str) -> None:
+    """Imprime mensagem padronizada com flush para CI."""
+    print(f'[{status}] {message}', flush=True)
 
-print(f"Raiz do projeto detectada: {project_root}")
 
-# Validar marcadores mínimos
-markers = ["scripts", ".github"]
-for marker in markers:
-    marker_path = project_root / marker
-    if not marker_path.is_dir():
-        print(f"Erro: Marcador '{marker}' não encontrado. Verifique a raiz do projeto.")
-        sys.exit(1)
+root = Path.cwd()
+print_status('INFO', f'Raiz detectada: {root}')
 
-# Validar opcionais
-app_path = project_root / "app"
-if app_path.is_dir():
-    print("\u2713 Pasta 'app/' encontrada.")
-else:
-    print("\u26a0 Pasta 'app/' não encontrada (opcional).")
+# Validacoes obrigatorias
+if not (root / 'scripts').exists():
+    print_status('ERRO', "Pasta 'scripts/' obrigatoria nao encontrada.")
+    sys.exit(1)
 
-tests_path = project_root / "tests"
-if tests_path.is_dir():
-    print("\u2713 Pasta 'tests/' encontrada.")
-else:
-    print("\u26a0 Pasta 'tests/' não encontrada (opcional).")
+if not (root / '.github').exists():
+    print_status('ERRO', ".Pasta '.github/' obrigatoria nao encontrada.")
+    sys.exit(1)
 
-print("Validação da raiz concluída.")
+# Validacoes opcionais
+if not (root / 'app').exists():
+    print_status('WARN', "Pasta 'app/' nao encontrada (opcional).")
+
+if not (root / 'tests').exists():
+    print_status('WARN', "Pasta 'tests/' nao encontrada (opcional).")
+
+print_status('OK', 'Estrutura do projeto validada com sucesso.')
