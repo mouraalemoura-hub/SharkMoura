@@ -1,3 +1,6 @@
+# Resolve conflito de rebase no .github/workflows/project-gate.yml
+# 1. Sobrescreve com YAML final limpo
+
 name: project-gate
 
 on:
@@ -8,67 +11,44 @@ jobs:
   gate:
     runs-on: windows-latest
     steps:
-      - name: Checkout do repositório
-        uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-      - name: Configurar Python 3.10
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
-          cache: 'pip'
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.10"
 
-      - name: Instalar dependências
-        shell: pwsh
-        run: |
-          pip install pytest
-          if (Test-Path requirements.txt) {
-            pip install -r requirements.txt
-          }
-          if (Test-Path requirements-dev.txt) {
-            pip install -r requirements-dev.txt
-          }
-          if (Test-Path pyproject.toml) {
-            pip install -e .
-            if ($LASTEXITCODE -ne 0) {
-              Write-Output "Aviso: falha na instalação editable via pyproject.toml, continuando..."
-            }
-          }
-          if (Test-Path setup.py) {
-            pip install -e .
-            if ($LASTEXITCODE -ne 0) {
-              Write-Output "Aviso: falha na instalação editable via setup.py, continuando..."
-            }
-          }
+    - name: Show Python version
+      run: python --version
 
-      - name: Listar pacotes instalados
-        shell: pwsh
-        run: pip list
+    - name: Upgrade pip
+      run: python -m pip install --upgrade pip
 
-      - name: Diagnóstico e verificação do script
-        shell: pwsh
-        run: |
-          Write-Output "::group::Informações básicas"
-          Write-Output "Diretório atual: $(Get-Location)"
-          Write-Output "Commit: $(git rev-parse HEAD)"
-          Write-Output "::endgroup::"
-          Write-Output "::group::Arquivos na raiz"
-          Get-ChildItem -Name | ForEach-Object { Write-Output $_ }
-          Write-Output "::endgroup::"
-          Write-Output "::group::Pasta scripts"
-          if (Test-Path scripts) {
-            Get-ChildItem scripts -Name | ForEach-Object { Write-Output $_ }
-          } else {
-            Write-Output "Pasta scripts não existe."
-          }
-          Write-Output "::endgroup::"
-          $scriptPath = 'scripts/run_project_gate.py'
-          if (Test-Path $scriptPath) {
-            Write-Output "✓ $scriptPath existe e está pronto."
-          } else {
-            Write-Error "ERRO: $scriptPath não encontrado!"
-            exit 1
-          }
+    - name: Install pytest
+      run: pip install pytest
 
-      - name: Executar project gate
-        shell: pwsh
-        run: python scripts/run_project_gate.py
+    - name: Instalar dependências opcionais
+      shell: pwsh
+      run: |
+        if (Test-Path requirements.txt) { pip install -r requirements.txt }
+        if (Test-Path requirements-dev.txt) { pip install -r requirements-dev.txt }
+        if (Test-Path pyproject.toml) { pip install -e . }
+        if (Test-Path setup.py) { pip install -e . }
+
+    - name: Diagnóstico
+      shell: pwsh
+      run: |
+        Get-Location
+        git rev-parse HEAD
+        Get-ChildItem .
+        Get-ChildItem scripts
+        if (-not (Test-Path scripts/run_project_gate.py)) {
+          Write-Error "scripts/run_project_gate.py não encontrado"
+          exit 1
+        }
+
+    - name: Pip list
+      run: pip list
+
+    - name: Run project gate
+      run: python scripts/run_project_gate.py
